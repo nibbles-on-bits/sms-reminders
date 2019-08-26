@@ -29,8 +29,8 @@ func NewSmsReminderService(repo SmsReminderRepository) SmsReminderService {
 
 func (s *smsReminderService) CreateSmsReminder(smsReminder *SmsReminder) error {
 	smsReminder.ID = uuid.New().String()
-	smsReminder.Created = time.Now()
-	smsReminder.Updated = time.Now()
+	smsReminder.CreatedTime = time.Now()
+	smsReminder.UpdatedTime = time.Now()
 
 	if err := s.repo.Create(smsReminder); err != nil {
 		logrus.WithField("error", err).Error("Error creating smsReminder")

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +14,8 @@ import (
 	"sms-reminders-microservice/internal/smsreminder"
 
 	"github.com/gorilla/mux"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 )
 
@@ -71,10 +74,23 @@ func main() {
 	router.HandleFunc("/smsreminders/{id}", SmsReminderHandler.GetByID).Methods("GET")
 	router.HandleFunc("/smsreminders/{id}", SmsReminderHandler.DeleteByID).Methods("DELETE")
 	router.HandleFunc("/smsreminders", SmsReminderHandler.Create).Methods("POST")
-
 	//router.HandleFunc("/events")	// TODO : an event receiver endpoint for Event Sourcing
 
-	Logger.Error("sms-reminders-microservice terminated")
+	errs := make(chan error, 2)
+
+	go func() {
+		logrus.Info("Listening server mode on port :3003")
+		//errs <- http.ListenAndServe(":7777", nil)
+		errs <- http.ListenAndServe(":3003", router)
+	}()
+
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT)
+		errs <- fmt.Errorf("Err Chan %s", <-c)
+	}()
+
+	logrus.Error("sms-reminders-microservice terminated", <-errs)
 
 }
 

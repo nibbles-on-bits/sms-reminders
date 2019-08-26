@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const SmsReminderTable = "SmsReminder"
-
 type smsReminderRepository struct {
 	db *sql.DB
 }
@@ -52,31 +50,31 @@ func (r *smsReminderRepository) FindByID(id string) (*smsreminder.SmsReminder, e
 }
 
 func (r *smsReminderRepository) FindAll() (smsReminders []*smsreminder.SmsReminder, err error) {
-	rows, err := r.db.Query("SELECT id, smsReminder_number, year, make, model, vin, created, updated, deleted FROM smsReminders")
+	rows, err := r.db.Query("SELECT id, from_number, to_number, message, scheduled_time, created_Time, updated_time, deleted_time FROM sms_reminders")
 	defer rows.Close()
 
 	for rows.Next() {
-		smsReminder := new(smsreminder.SmsReminder)
+		sr := new(smsreminder.SmsReminder)
 		tmCreated := ""
 		tmUpdated := ""
 		tmDeleted := ""
 
-		if err = rows.Scan(&smsReminder.ID, &smsReminder.SmsReminderNumber, &smsReminder.Year, &smsReminder.Make, &smsReminder.Model, &smsReminder.VIN, &tmCreated, &tmUpdated, &tmDeleted); err != nil {
+		if err = rows.Scan(&sr.ID, sr.ID, sr.FromNumber, sr.ToNumber, sr.Message, sr.ScheduledTime, tmCreated, tmUpdated, tmDeleted); err != nil {
 			log.Print(err)
 			return nil, err
 		}
 
 		t, err := time.Parse(time.RFC3339Nano, tmCreated)
 		fmt.Println(t, err)
-		smsReminder.Created = t
+		sr.CreatedTime = t
 		t, err = time.Parse(time.RFC3339Nano, tmUpdated)
 		fmt.Println(t, err)
-		smsReminder.Updated = t
+		sr.UpdatedTime = t
 		t, err = time.Parse(time.RFC3339Nano, tmDeleted)
 		fmt.Println(t, err)
-		smsReminder.Deleted = t
+		sr.DeletedTime = t
 
-		smsReminders = append(smsReminders, smsReminder)
+		smsReminders = append(smsReminders, sr)
 
 	}
 	return smsReminders, nil
