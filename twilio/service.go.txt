@@ -1,0 +1,24 @@
+t// package twilio
+
+// import (
+// 	"fmt"
+// )
+
+// type TwilioService interface {
+// 	SendSMS(twilio *Twilio) error
+// }
+
+// type twilioSerivce struct {
+// 	string ID
+// }
+
+// func NewTwilioService() TwilioService {
+// 	return &twilioSerivce{
+// 		ID,
+// 	}
+// }
+
+// func (t *twilioSerivce) SendSMS(fromNum string, toNum string, message string) error {
+// 	fmt.Println("SendSMS()")
+
+// }

@@ -10,10 +10,16 @@ import (
 
 // SmsReminderService is the interface for smsReminders
 type SmsReminderService interface {
+	// Mark Reminder as expired
+	// Find out if we have any reminders due
+	//FindDueReminders(t time.Time, smsReminder *Sms) {}
+
 	CreateSmsReminder(smsReminder *SmsReminder) error
 	FindSmsReminderByID(id string) (*SmsReminder, error)
 	FindAllSmsReminders() ([]*SmsReminder, error)
+	FindOlderThanSmsReminders(time string) ([]*SmsReminder, error) // time should be unix time format 1567035250 would be Wednesday, August 28, 2019 11:34:10 PM Zulu
 	DeleteSmsReminderByID(id string) error
+	FindDueSmsReminders() ([]*SmsReminder, error)
 }
 
 type smsReminderService struct {
@@ -41,6 +47,20 @@ func (s *smsReminderService) CreateSmsReminder(smsReminder *SmsReminder) error {
 	return nil
 }
 
+// FindOlderThanSmsReminders returns a collection of SmsReminders that are older than a particular zulu unix timestamp
+func (s *smsReminderService) FindOlderThanSmsReminders(ut string) ([]*SmsReminder, error) {
+	smsReminder, err := s.repo.FindAll()
+
+	// Here we need to filter the ones older than t
+
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Error finding all smsReminder older than : " + ut)
+		return nil, err
+	}
+	logrus.Info("Found all smsReminders")
+	return smsReminder, nil
+}
+
 func (s *smsReminderService) FindSmsReminderByID(id string) (*SmsReminder, error) {
 	vehicle, err := s.repo.FindByID(id)
 
@@ -53,6 +73,16 @@ func (s *smsReminderService) FindSmsReminderByID(id string) (*SmsReminder, error
 }
 
 func (s *smsReminderService) FindAllSmsReminders() ([]*SmsReminder, error) {
+	smsReminder, err := s.repo.FindAll()
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Error finding all smsReminder")
+		return nil, err
+	}
+	logrus.Info("Found all smsReminders")
+	return smsReminder, nil
+}
+
+func (s *smsReminderService) FindDueSmsReminders() ([]*SmsReminder, error) {
 	smsReminder, err := s.repo.FindAll()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"error": err}).Error("Error finding all smsReminder")

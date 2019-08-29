@@ -12,6 +12,7 @@ import (
 
 type SmsReminderHandler interface {
 	Get(w http.ResponseWriter, r *http.Request)
+	GetOlderThan(w http.ResponseWriter, r *http.Request)
 	GetByID(w http.ResponseWriter, r *http.Request)
 	DeleteByID(w http.ResponseWriter, r *http.Request)
 	UpdateByID(w http.ResponseWriter, r *http.Request)
@@ -25,6 +26,33 @@ type smsReminderHandler struct {
 func NewSmsReminderHandler(smsReminderService SmsReminderService) SmsReminderHandler {
 	return &smsReminderHandler{
 		smsReminderService,
+	}
+}
+
+func (h *smsReminderHandler) GetOlderThan(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	time := vars["time"]
+
+	fmt.Printf("handler.go getOlderThan() time=%v\n", time)
+
+	smsReminders, err := h.smsReminderService.FindOlderThanSmsReminders(time)
+	if err != nil {
+		logrus.WithField("error", err).Error("Unable to find all smsReminders")
+		http.Error(w, "Unable to find all smsReminders", http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(smsReminders)
+	if err != nil {
+		logrus.WithField("error", err).Error("Error unmarshalling response")
+		http.Error(w, "Unable to get smsReminder", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(response); err != nil {
+		logrus.WithField("error", err).Error("Error writing response")
 	}
 }
 
@@ -95,7 +123,7 @@ func (h *smsReminderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var smsReminder SmsReminder
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&smsReminder); err != nil {
-		logrus.Error("Unable to decode smsReminder")
+		logrus.Error("Unable to decode smsReminder", err)
 		http.Error(w, "Bad format for smsReminder", http.StatusBadRequest)
 		return
 	}
@@ -118,5 +146,4 @@ func (h *smsReminderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(response); err != nil {
 		logrus.WithField("error", err).Error("Error writing response")
 	}
-
 }

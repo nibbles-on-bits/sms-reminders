@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	DefaultHTTPPort      = "3003"
 	DefaultRedisURL      = "localhost:6379"
 	DefaultRedisPassword = "example"
 
@@ -40,6 +41,20 @@ func main() {
 	defer Logger.Sync()
 	Logger.Info("Welcome to sms-reminders-microservice")
 
+	TwilioSID := env.EnvString("SRM_TWILIO_SID", "")
+	TwilioToken := env.EnvString("SRM_TWILIO_TOKEN", "")
+	HTTPPort := env.EnvString("SRM_HTTP_PORT", DefaultHTTPPort)
+
+	fmt.Printf("TwilioSID = %s\n", TwilioSID)
+	fmt.Printf("TwilioToken = %s\n", TwilioToken)
+
+	if TwilioSID == "" {
+		Logger.Panic("environment variable : TWILIO_SID not set")
+	}
+
+	if TwilioToken == "" {
+		Logger.Panic("environment variable : TWILIO_TOKEN not set")
+	}
 	var SmsReminderRepo smsreminder.SmsReminderRepository
 
 	go func() {
@@ -58,7 +73,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS sms_reminders (id TEXT PRIMARY KEY, from_number TEXT, to_number TEXT, message TEXT, scheduled_time TEXT, created_time TEXT, updated_time TEXT, deleted_time TEXT)")
+		statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS sms_reminders (id TEXT PRIMARY KEY, from_number TEXT, to_number TEXT, message TEXT, scheduled_time INTEGER, created_time INTEGER, updated_time INTEGER, deleted_time INTEGER, processing BOOL)")
 		statement.Exec()
 		defer db.Close()
 		SmsReminderRepo = sqlite3.NewSqlite3SmsReminderRepository(db)
@@ -72,6 +87,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/smsreminders", SmsReminderHandler.Get).Methods("GET")
 	router.HandleFunc("/smsreminders/{id}", SmsReminderHandler.GetByID).Methods("GET")
+	router.HandleFunc("/smsreminders/olderthan/{time}", SmsReminderHandler.GetOlderThan).Methods("GET")
 	router.HandleFunc("/smsreminders/{id}", SmsReminderHandler.DeleteByID).Methods("DELETE")
 	router.HandleFunc("/smsreminders", SmsReminderHandler.Create).Methods("POST")
 	//router.HandleFunc("/events")	// TODO : an event receiver endpoint for Event Sourcing
@@ -79,9 +95,9 @@ func main() {
 	errs := make(chan error, 2)
 
 	go func() {
-		logrus.Info("Listening server mode on port :3003")
-		//errs <- http.ListenAndServe(":7777", nil)
-		errs <- http.ListenAndServe(":3003", router)
+		logrus.Info(fmt.Sprintf("Listening server mode on port : %s", HTTPPort))
+		p := ":" + HTTPPort
+		errs <- http.ListenAndServe(p, router)
 	}()
 
 	go func() {
@@ -90,8 +106,34 @@ func main() {
 		errs <- fmt.Errorf("Err Chan %s", <-c)
 	}()
 
+	/*go func() {
+		for true {
+			fmt.Println("Timer")
+			time.Sleep(5 * time.Second)
+
+			// given the current time stamp
+		}
+	}()*/
+
 	logrus.Error("sms-reminders-microservice terminated", <-errs)
 
 }
+
+/*func sendSMS(sr SmsReminder) {
+	sr.FromNumber
+	sr.ToNumber
+
+}
+*/
+// type SmsReminder struct {
+// 	ID            string    `json:"id" db:"id"`
+// 	FromNumber    string    `json:"fromNumber" db:"from_number"`
+// 	ToNumber      string    `json:"toNumber" db:"to_number"`
+// 	Message       string    `json"message" db:"message"`
+// 	ScheduledTime time.Time `json:"scheduledTime" db:"scheduled_time"`
+// 	CreatedTime   time.Time `json:"createdTime" db:"created_time"`
+// 	UpdatedTime   time.Time `json:"updatedTime" db:"updated_time"`
+// 	DeletedTime   time.Time `json:"deletedTime" db:"deleted_time"`
+// }
 
 //TODO : Create a smsRemindersService, smsRemindersHandler

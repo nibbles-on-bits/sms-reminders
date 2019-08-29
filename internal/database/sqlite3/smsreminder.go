@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sms-reminders-microservice/internal/smsreminder"
+	"strconv"
 	"time"
 )
 
@@ -26,11 +27,12 @@ func (r *smsReminderRepository) Create(sr *smsreminder.SmsReminder) error {
 		panic(err)
 	}
 
-	tmCreated := sr.CreatedTime.UTC().Format(time.RFC3339)
-	tmUpdated := sr.UpdatedTime.UTC().Format(time.RFC3339)
-	tmDeleted := sr.DeletedTime.UTC().Format(time.RFC3339)
+	tmScheduled := strconv.FormatInt(sr.ScheduledTime.Unix(), 10)
+	tmCreated := strconv.FormatInt(sr.CreatedTime.Unix(), 10)
+	tmUpdated := strconv.FormatInt(sr.UpdatedTime.Unix(), 10)
+	tmDeleted := strconv.FormatInt(sr.DeletedTime.Unix(), 10)
 
-	res, err := statement.Exec(sr.ID, sr.FromNumber, sr.ToNumber, sr.Message, sr.ScheduledTime, tmCreated, tmUpdated, tmDeleted)
+	res, err := statement.Exec(sr.ID, sr.FromNumber, sr.ToNumber, sr.Message, tmScheduled, tmCreated, tmUpdated, tmDeleted)
 
 	fmt.Printf("res=%#v\n", res)
 
@@ -55,22 +57,37 @@ func (r *smsReminderRepository) FindAll() (smsReminders []*smsreminder.SmsRemind
 
 	for rows.Next() {
 		sr := new(smsreminder.SmsReminder)
-		tmCreated := ""
-		tmUpdated := ""
-		tmDeleted := ""
+		// tmScheduled := ""
+		// tmCreated := ""
+		// tmUpdated := ""
+		// tmDeleted := ""
 
-		if err = rows.Scan(&sr.ID, sr.ID, sr.FromNumber, sr.ToNumber, sr.Message, sr.ScheduledTime, tmCreated, tmUpdated, tmDeleted); err != nil {
+		var tmScheduled int64
+		var tmCreated int64
+		var tmUpdated int64
+		var tmDeleted int64
+
+		if err = rows.Scan(&sr.ID, &sr.FromNumber, &sr.ToNumber, &sr.Message, &tmScheduled, &tmCreated, &tmUpdated, &tmDeleted); err != nil {
 			log.Print(err)
 			return nil, err
 		}
 
-		t, err := time.Parse(time.RFC3339Nano, tmCreated)
+		fmt.Println("Debugging FindAll()")
+		fmt.Printf("tmScheduled=%d\n", tmScheduled)
+
+		t := time.Unix(tmScheduled, 0)
+		fmt.Println(t, err)
+		sr.ScheduledTime = t
+		t = time.Unix(tmCreated, 0)
+
 		fmt.Println(t, err)
 		sr.CreatedTime = t
-		t, err = time.Parse(time.RFC3339Nano, tmUpdated)
+		t = time.Unix(tmUpdated, 0)
+
 		fmt.Println(t, err)
 		sr.UpdatedTime = t
-		t, err = time.Parse(time.RFC3339Nano, tmDeleted)
+		t = time.Unix(tmDeleted, 0)
+
 		fmt.Println(t, err)
 		sr.DeletedTime = t
 
@@ -82,7 +99,7 @@ func (r *smsReminderRepository) FindAll() (smsReminders []*smsreminder.SmsRemind
 
 // DeleteByID attempts to delete a smsReminder in a sqlite3 repository
 func (r *smsReminderRepository) DeleteByID(id string) error {
-	_, err := r.db.Exec("DELETE FROM smsReminders where id=$1", id)
+	_, err := r.db.Exec("DELETE FROM sms_reminders where id=$1", id)
 
 	if err != nil {
 		panic(err)
